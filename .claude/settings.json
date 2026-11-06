@@ -1,0 +1,18 @@
+{
+  "extraKnownMarketplaces": {
+    "linkedin-skills": {
+      "source": { "source": "github", "repo": "sergebulaev/linkedin-skills" }
+    },
+    "marketingskills": {
+      "source": { "source": "github", "repo": "coreyhaines31/marketingskills" }
+    },
+    "openoutreach": {
+      "source": { "source": "github", "repo": "eracle/OpenOutreach" }
+    }
+  },
+  "enabledPlugins": {
+    "linkedin-skills@linkedin-skills": true,
+    "marketing-skills@marketingskills": true,
+    "openoutreach@openoutreach": true
+  }
+}

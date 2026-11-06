@@ -1,0 +1,99 @@
+# Invoice Ninja — invoices, quotes, payment reminders (#10).
+# Upstream: https://github.com/invoiceninja/invoiceninja  (Docker: https://github.com/invoiceninja/dockerfiles, debian/)
+# nginx/*.conf are vendored unchanged from invoiceninja/dockerfiles.
+name: biz-invoiceninja
+
+x-in-env: &in-env
+  APP_URL: ${INVOICENINJA_URL}
+  APP_KEY: ${APP_KEY:?run ./stack.sh init}
+  APP_ENV: production
+  APP_DEBUG: "false"
+  REQUIRE_HTTPS: ${REQUIRE_HTTPS:-false}
+  PDF_GENERATOR: snappdf
+  TRUSTED_PROXIES: "*"
+  CACHE_DRIVER: redis
+  QUEUE_CONNECTION: redis
+  SESSION_DRIVER: redis
+  REDIS_HOST: redis
+  REDIS_PASSWORD: "null"
+  REDIS_PORT: 6379
+  FILESYSTEM_DISK: debian_docker
+  DB_CONNECTION: mysql
+  DB_HOST: mysql
+  DB_PORT: 3306
+  DB_DATABASE: ninja
+  DB_USERNAME: ninja
+  DB_PASSWORD: ${DB_PASSWORD:?run ./stack.sh init}
+  # First-run admin account (created automatically on first boot)
+  IN_USER_EMAIL: ${ADMIN_EMAIL}
+  IN_PASSWORD: ${ADMIN_PASSWORD}
+  MAIL_MAILER: ${MAIL_MAILER:-log}
+  MAIL_HOST: ${SMTP_HOST:-}
+  MAIL_PORT: ${SMTP_PORT:-587}
+  MAIL_USERNAME: ${SMTP_USER:-}
+  MAIL_PASSWORD: ${SMTP_PASSWORD:-}
+  MAIL_ENCRYPTION: tls
+  MAIL_FROM_ADDRESS: ${SMTP_FROM:-billing@example.com}
+  MAIL_FROM_NAME: ${SMTP_FROM_NAME:-Billing}
+  IS_DOCKER: "true"
+  SCOUT_DRIVER: "null"
+
+services:
+  app:
+    image: invoiceninja/invoiceninja-debian:${INVOICENINJA_TAG:-latest}
+    restart: unless-stopped
+    environment: *in-env
+    volumes:
+      - app_public:/var/www/html/public
+      - app_storage:/var/www/html/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${INVOICENINJA_PORT:-8081}:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+      - app_public:/var/www/html/public:ro
+      - app_storage:/var/www/html/storage:ro
+    depends_on:
+      app:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ninja
+      MYSQL_USER: ninja
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?run ./stack.sh init}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uninja -p$$MYSQL_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  app_public:
+  app_storage:
+  mysql_data:
+  redis_data:

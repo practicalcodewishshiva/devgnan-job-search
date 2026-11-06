@@ -1,0 +1,48 @@
+# Cal.com — booking pages & scheduling (#07). Upstream: https://github.com/calcom/cal.com
+# Uses the prebuilt image (calcom/cal.com) instead of building from source.
+name: biz-calcom
+
+services:
+  calcom:
+    image: calcom/cal.com:${CALCOM_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${CALCOM_PORT:-3002}:3000"
+    environment:
+      DATABASE_URL: postgresql://calcom:${DB_PASSWORD}@db:5432/calendso
+      DATABASE_DIRECT_URL: postgresql://calcom:${DB_PASSWORD}@db:5432/calendso
+      NEXT_PUBLIC_WEBAPP_URL: ${CALCOM_URL}
+      NEXTAUTH_URL: ${CALCOM_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?run ./stack.sh init}
+      CALENDSO_ENCRYPTION_KEY: ${CALENDSO_ENCRYPTION_KEY:?run ./stack.sh init}
+      NEXT_PUBLIC_LICENSE_CONSENT: agree
+      CALCOM_TELEMETRY_DISABLED: "1"
+      # Email (needed for invites / password reset) — fill in to enable
+      EMAIL_FROM: ${SMTP_FROM:-}
+      EMAIL_SERVER_HOST: ${SMTP_HOST:-}
+      EMAIL_SERVER_PORT: ${SMTP_PORT:-}
+      EMAIL_SERVER_USER: ${SMTP_USER:-}
+      EMAIL_SERVER_PASSWORD: ${SMTP_PASSWORD:-}
+      # Google Calendar sync — see README
+      GOOGLE_API_CREDENTIALS: ${GOOGLE_API_CREDENTIALS:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: calcom
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?run ./stack.sh init}
+      POSTGRES_DB: calendso
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calcom -d calendso"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  db_data:
