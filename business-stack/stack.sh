@@ -139,10 +139,15 @@ case "$cmd" in
     ;;
   up)
     check_prereqs; load_stack_env
+    failed=()
     for app in $(apps_or_all "$@"); do
-      prepare "$app"; info "starting $app"; compose "$app" up -d
+      prepare "$app"; info "starting $app"
+      compose "$app" up -d || { failed+=("$app"); echo "warning: $app failed to start — continuing with the rest" >&2; }
     done
     echo; info "URLs (first boot can take a few minutes while databases migrate):"; print_urls
+    if [[ ${#failed[@]} -gt 0 ]]; then
+      echo; die "these apps did not start: ${failed[*]} — retry with ./stack.sh up ${failed[*]} (a Docker Hub '429 Too Many Requests' just means wait or run 'docker login')"
+    fi
     ;;
   down)
     check_prereqs; load_stack_env

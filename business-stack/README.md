@@ -159,5 +159,5 @@ Once the apps are up, n8n (#14) connects them. Useful first workflows:
 Each app has an API key screen in its settings. Paste the keys into n8n credentials.
 
 ## Tested
-Validated in a clean Linux + Docker environment on 2026-11-06. The test results are in
+Tested in a clean Linux + Docker environment on 2026-11-06. Results, including what could not be booted there, are in
 `TESTED.md`.
